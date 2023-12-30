@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk
-from PIL import Image, ImageTk  # Make sure to install the Pillow library for working with images
+from PIL import Image, ImageTk
+import music21
 import os
 import random
 
@@ -11,7 +12,7 @@ rhythm_patterns = [
     {"name": "Whole", "image": "whole_note.jpg", "value": 1}
 ]
 
-BARS_IN_PAGE = 32
+BARS_IN_PAGE = 48
 
 class RhythmGeneratorApp:
     def __init__(self, root):
@@ -33,7 +34,7 @@ class RhythmGeneratorApp:
         time_signature_entry = ttk.Entry(frm)
         time_signature_entry.grid(column=1, row=0)
 
-        generate_button = ttk.Button(frm, text="Generate Rhythm", command= self.generate_rhythm)
+        generate_button = ttk.Button(frm, text="Generate Rhythm", command=self.on_generate_button)
         generate_button.grid(column=1, row=3)
 
         # Create buttons for each rhythm pattern
@@ -42,7 +43,6 @@ class RhythmGeneratorApp:
 
         for i, pattern in enumerate(rhythm_patterns):
             image_path = os.path.join(images_directory, pattern["image"])
-            print(f"Checking image path: {image_path}")  # Debugging line
             image = Image.open(image_path).resize((50, 50), resample=Image.HAMMING)
             photo = ImageTk.PhotoImage(image)
             
@@ -67,25 +67,30 @@ class RhythmGeneratorApp:
         bar = 0
         selected_rhythm = []
         
-        while bar < bar_length:
+        while bar < bar_length and self.selected_patterns:
             selected_note_name = random.choice(list(self.selected_patterns))
             selected_note = self.selected_patterns[selected_note_name]
-
-            print(selected_note, selected_note_name)
             
             if bar + selected_note <= bar_length:
                 bar += selected_note
                 selected_rhythm.append((selected_note_name, selected_note))
 
-        print(selected_rhythm)
-        return bar
+        return selected_rhythm
             
-    def generate_rhythm(self):
-        for bar in BARS_IN_PAGE:
-            rhythm = self.generate_oneBar
-            yield rhythm
-
-
+    def generate_rhythms(self):
+        rhythms = []
+        for _ in range(BARS_IN_PAGE):
+            rhythm = self.generate_oneBar()
+            rhythms.append(rhythm)
+        return rhythms
+    
+    def on_generate_button(self):
+        try:
+            rhythms = self.generate_rhythms()
+            for rhythm in rhythms:
+                print("Generated rhythm", rhythm)
+        except StopIteration:
+            print("Generation complete")
 
 if __name__ == "__main__":
     root = Tk()
