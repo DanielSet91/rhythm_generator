@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from PIL import Image, ImageTk
-import music21
+from music21 import stream, meter, note
 import os
 import random
 
@@ -78,17 +78,28 @@ class RhythmGeneratorApp:
         return selected_rhythm
             
     def generate_rhythms(self):
-        rhythms = []
         for _ in range(BARS_IN_PAGE):
             rhythm = self.generate_oneBar()
-            rhythms.append(rhythm)
-        return rhythms
+            yield rhythm
     
+    def create_music_stream(self, rhythms):
+        music_stream = stream.Stream()
+        
+        for rhythm in rhythms:
+            for note_name, duration in rhythm:
+                n = note.Note('C4')
+                n.quarterLength = duration * 4
+                music_stream.append(n)
+        return music_stream
+
     def on_generate_button(self):
         try:
-            rhythms = self.generate_rhythms()
-            for rhythm in rhythms:
-                print("Generated rhythm", rhythm)
+            rhythms = list(self.generate_rhythms())
+            music_stream = self.create_music_stream(rhythms)
+
+            music_stream.show()
+            # for rhythm in rhythms:
+            #     print("Generated rhythm", rhythm)
         except StopIteration:
             print("Generation complete")
 
