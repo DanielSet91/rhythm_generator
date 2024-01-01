@@ -4,7 +4,9 @@ from PIL import Image, ImageTk
 from music21 import stream, meter, note
 import os
 import random
+import time
 import threading
+from fractions import Fraction
 
 rhythm_patterns = [
     {"name": "sixteenth", "image": "sixteenth_note.png", "value": 0.25},
@@ -15,8 +17,8 @@ rhythm_patterns = [
     {"name": "Half", "image": "half_note.jpeg", "value": 2},
     {"name": "dotted-half", "image": "dotted-half.png", "value": 3.0},
     {"name": "Whole", "image": "whole_note.jpg", "value": 4.0},
-    {"name": "Triplet-eighth", "image": "triplet-eighth.png", "value": 0.333333},
-    {"name": "Triplet-quarter", "image": "triplet-quarter.png", "value": 0.666666}
+    {"name": "Triplet-eighth", "image": "triplet-eighth.png", "value": Fraction(1/3)},
+    {"name": "Triplet-quarter", "image": "triplet-quarter.png", "value": Fraction(2/3)}
 ]
 BARS_IN_PAGE = 48
 
@@ -45,8 +47,6 @@ class RhythmGeneratorApp:
         generate_button = ttk.Button(frm, text="Generate Rhythm", command=self.on_generate_button)
         generate_button.grid(column=1, row=3, columnspan=3)
 
-        close_button = Button(frm, text = "Close", command = self.on_close_button)
-        close_button.grid(column = 4, row = 4, columnspan=3)
         # Create buttons for each rhythm pattern
 
         images_directory = os.path.join(os.path.dirname(__file__), "images")
@@ -89,16 +89,16 @@ class RhythmGeneratorApp:
         print("Selected Rhythm Patterns:", self.selected_patterns)
             
     def generate_oneBar(self):
-        bar_length = 4
-        bar = 0
-        tolerance = 0.001
+        bar_length = Fraction(4)
+        bar = Fraction(0)
+        tolerance = Fraction(1, 10)
         selected_rhythm = []
-        
 
-        while abs(bar - bar_length) > tolerance and bar < bar_length and self.selected_patterns:
+        while bar < bar_length and self.selected_patterns:
             selected_note_name = random.choice(list(self.selected_patterns))
-            selected_note = self.selected_patterns[selected_note_name]
-            if selected_note == 0.333333 or selected_note == 0.666666:
+            selected_note = Fraction(self.selected_patterns[selected_note_name])
+
+            if selected_note == Fraction(1, 3) or selected_note == Fraction(2, 3):
                 if bar + selected_note <= bar_length:
                     bar += selected_note
                     selected_rhythm.append((selected_note_name, selected_note))
@@ -107,7 +107,10 @@ class RhythmGeneratorApp:
                     bar += selected_note
                     selected_rhythm.append((selected_note_name, selected_note))
 
-        return selected_rhythm
+        # Round the durations for MuseScore
+        selected_rhythm_rounded = [(note, round(float(duration), 4)) for note, duration in selected_rhythm]
+
+        return selected_rhythm_rounded
                 
 
     def generate_rhythms(self):
@@ -134,7 +137,7 @@ class RhythmGeneratorApp:
 
 
     def on_generate_button(self):
-       threading.Thread(target=self.generate_and_show_music).start()
+        threading.Thread(target=self.generate_and_show_music).start()
 
 
     def generate_and_show_music(self):
@@ -142,14 +145,8 @@ class RhythmGeneratorApp:
             rhythms = list(self.generate_rhythms())
             music_stream = self.create_music_stream(rhythms)
             music_stream.show()
-            print("Generation complete")
-
         except StopIteration:
             print("Generation complete")
-    
-    
-    def on_close_button(self):
-        self.root.destroy()
 
 
 if __name__ == "__main__":
