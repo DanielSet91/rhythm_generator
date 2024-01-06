@@ -1,0 +1,9 @@
+required modules:
+
+tkinter 
+PIL 
+music21
+os
+random
+threading
+Fraction

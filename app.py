@@ -41,10 +41,15 @@ class RhythmGeneratorApp:
         frm = ttk.Frame(self.root, padding=10)
         frm.grid()
 
-        # Time Signature Label and Entry
-        ttk.Label(frm, text="Time Signature:").grid(column=0, row=0)
-        time_signature_entry = ttk.Entry(frm)
-        time_signature_entry.grid(column=1, row=0, columnspan=3)
+        ttk.Label(frm, text="Select Time Signature:").grid(column=0, row=0)
+        time_signature_options = ["4/4", "3/4", "6/8", "2/4", "5/4", "7/8", "9/8", "12/8"] 
+        self.time_signature_combobox = ttk.Combobox(frm, values=time_signature_options, state="readonly")
+        self.time_signature_combobox.grid(column=1, row=0)
+
+        ttk.Label(frm, text="Ties over Measure").grid(column=2, row=0)
+        ties_options = ["Yes", "No"] 
+        self.tie_measures_combobox = ttk.Combobox(frm, values=ties_options, state="readonly")
+        self.tie_measures_combobox.grid(column=3, row=0)
 
         generate_button = ttk.Button(frm, text="Generate Rhythm", command=self.on_generate_button)
         generate_button.grid(column=1, row=3, columnspan=3)
@@ -69,6 +74,8 @@ class RhythmGeneratorApp:
                                      command=lambda p=pattern: self.toggle_pattern(p, button))
             button.image = photo
             button.grid(column=column, row=row, padx=5, pady=5)
+            
+        ttk.Label(frm, text="Created by Daniel Set").grid(column=4, row=row+1, columnspan=6, pady=10)
 
 
     def toggle_pattern(self, pattern, button):
@@ -102,7 +109,12 @@ class RhythmGeneratorApp:
 
     def generate_oneBar(self):
 
-        bar_length = Fraction(4, 1)
+        selected_time_signature = self.time_signature_combobox.get()
+        if selected_time_signature:
+            beats_per_measure, note_value = map(int, selected_time_signature.split('/'))
+            bar_length = Fraction(beats_per_measure, 1) * Fraction(4, note_value)
+        else:
+            bar_length = Fraction(4, 1)
         bar = Fraction(0, 1)
         selected_rhythm = []
         eighth_triplet = Fraction(1, 3)
@@ -156,7 +168,6 @@ class RhythmGeneratorApp:
                 bar += selected_note
                 selected_rhythm.append((selected_note_name, selected_note))
 
-        # print(f"Bar: {selected_rhythm}")
         return selected_rhythm
     
     def generate_eighth_triplets(self):
@@ -207,7 +218,11 @@ class RhythmGeneratorApp:
 
     def create_music_stream(self, rhythms):
         music_stream = stream.Stream()
-        music_stream.append(meter.TimeSignature('4/4'))
+        selected_time_signature = self.time_signature_combobox.get()
+        if selected_time_signature:
+            music_stream.append(meter.TimeSignature(self.time_signature_combobox.get()))
+        else:
+            music_stream.append(meter.TimeSignature('4/4'))
 
         for rhythm in rhythms:
             measure = stream.Measure()
