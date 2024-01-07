@@ -1,5 +1,5 @@
 from tkinter import *
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk
 from music21 import stream, meter, note
 import os
@@ -20,7 +20,7 @@ rhythm_patterns = [
     {"name": "Triplet-eighth", "image": "triplet-eighth.png", "value": Fraction(1, 3)},
     {"name": "Triplet-quarter", "image": "triplet-quarter.png", "value": Fraction(2, 3)}
 ]
-BARS_IN_PAGE = 32
+BARS_IN_PAGE = 36
 
 
 class RhythmGeneratorApp:
@@ -33,6 +33,11 @@ class RhythmGeneratorApp:
 
         self.selected_triplets = {}
         self.selected_regular = {}
+
+        self.num_bars_var = StringVar(value=str(BARS_IN_PAGE))
+        self.output_file_path = "generated_music.xml"
+        self.output_file_type = "musicxml"
+        self.BARS_IN_PAGE = BARS_IN_PAGE
         # Create GUI elements
         self.create_gui_elements()
 
@@ -51,11 +56,15 @@ class RhythmGeneratorApp:
         self.tie_measures_combobox = ttk.Combobox(frm, values=ties_options, state="readonly")
         self.tie_measures_combobox.grid(column=3, row=0)
 
+        ttk.Label(frm, text="Number of Bars(default is 32):").grid(column=4, row=0)
+        num_bars_entry = ttk.Entry(frm, textvariable=self.num_bars_var)
+        num_bars_entry.grid(column=5, row=0)
+
         generate_button = ttk.Button(frm, text="Generate Rhythm", command=self.on_generate_button)
-        generate_button.grid(column=1, row=3, columnspan=3)
+        generate_button.grid(column=1, row=7, columnspan=3)
 
         close_button = Button(frm, text="Close", command=self.on_close_button)
-        close_button.grid(column=4, row=4, columnspan=3)
+        close_button.grid(column=4, row=7, columnspan=3)
 
         # Create buttons for each rhythm pattern
         images_directory = os.path.join(os.path.dirname(__file__), "images")
@@ -75,7 +84,10 @@ class RhythmGeneratorApp:
             button.image = photo
             button.grid(column=column, row=row, padx=5, pady=5)
             
-        ttk.Label(frm, text="Created by Daniel Set").grid(column=4, row=row+1, columnspan=6, pady=10)
+        choose_file_button = ttk.Button(frm, text="Choose Output File", command=self.on_choose_file_button)
+        choose_file_button.grid(column=1, row=3, columnspan=3)
+
+        ttk.Label(frm, text="Created by Daniel Set").grid(column=4, row=6, columnspan=6, pady=10)
 
 
     def toggle_pattern(self, pattern, button):
@@ -108,22 +120,26 @@ class RhythmGeneratorApp:
         self.selected_regular = {name: value for name, value in self.selected_patterns.items() if not "Triplet" in name}  
 
     def generate_oneBar(self):
-
-        selected_time_signature = self.time_signature_combobox.get()
-        if selected_time_signature:
-            beats_per_measure, note_value = map(int, selected_time_signature.split('/'))
-            bar_length = Fraction(beats_per_measure, 1) * Fraction(4, note_value)
-        else:
-            bar_length = Fraction(4, 1)
+        
         bar = Fraction(0, 1)
         selected_rhythm = []
         eighth_triplet = Fraction(1, 3)
         quarter_triplet = Fraction(2, 3)
         quarter = Fraction(1, 1)
-        fourth_beat = Fraction(3, 1)
         tries = 0
-        max_tries = 20
+        max_tries = 25
 
+        selected_time_signature = self.time_signature_combobox.get()
+        ties = self.tie_measures_combobox.get()
+        if selected_time_signature:
+            beats_per_measure, note_value = map(int, selected_time_signature.split('/'))
+            bar_length = Fraction(beats_per_measure, 1) * Fraction(4, note_value)
+            fourth_beat = bar_length - Fraction(1, 1)
+
+        else:
+            bar_length = Fraction(4, 1)
+            fourth_beat = bar_length - Fraction(1, 1)
+            
         while bar < bar_length and self.selected_patterns and (self.selected_regular or self.selected_triplets):
             selected_note_name = random.choice(list(self.selected_patterns))
             selected_note = self.selected_patterns[selected_note_name]
@@ -168,7 +184,7 @@ class RhythmGeneratorApp:
                 bar += selected_note
                 selected_rhythm.append((selected_note_name, selected_note))
 
-        return selected_rhythm
+        return selected_rhythm       
     
     def generate_eighth_triplets(self):
         triplets_notes = []
@@ -208,7 +224,7 @@ class RhythmGeneratorApp:
         return triplet_notes
 
     def generate_rhythms(self):
-        for bar in range(BARS_IN_PAGE):
+        for bar in range(self.BARS_IN_PAGE):
             try:
                 rhythm = self.generate_oneBar()
                 yield rhythm
@@ -241,21 +257,40 @@ class RhythmGeneratorApp:
 
 
     def on_generate_button(self):
+        num_bars_str = self.num_bars_var.get()
+
+        try:
+            num_bars = int(num_bars_str)
+            self.BARS_IN_PAGE = num_bars
+        except ValueError:
+            messagebox.showinfo("Invalid input", f"invalid input. using default value of {self.BARS_IN_PAGE}.")
+            print(f"invalid input: {num_bars_str}. using default value.")
+    
         threading.Thread(target=self.generate_and_show_music).start()
 
+    def on_choose_file_button(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".xml", filetypes=[("MusicXML files", "*.xml"), ("MIDI files", "*.midi;*.mid"), ("Sibelius/MuseScore files", "*.sib;*.mscz")])
+        if file_path:
+            self.output_file_path = file_path
+            _, file_extension = os.path.splitext(file_path)
+            self.output_file_type = file_extension.lstrip(".") if file_extension else "musicxml"
 
     def generate_and_show_music(self):
         try:
             rhythms = list(self.generate_rhythms())
             music_stream = self.create_music_stream(rhythms)
             music_stream.show()
+            try:
+                music_stream.write(self.output_file_type, fp=self.output_file_path)
+                print(f"Generation complete. Music saved to: {self.output_file_path}")
+
+            except Exception as e:
+                print(f"Error while saving the file: {e}")
+
             print("Generation complete")
 
         except StopIteration:
             print("Generation complete")
-
-        except ValueError:
-            pass
 
     def on_close_button(self):
         self.root.destroy()
