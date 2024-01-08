@@ -13,10 +13,10 @@ rhythm_patterns = [
     {"name": "Eighth", "image": "eighth_note.jpg", "value": Fraction(1, 2)},
     {"name": "dotted-Eighth", "image": "dotted_eighth_note.png", "value": Fraction(3, 4)},
     {"name": "Quarter", "image": "quarter_note.png", "value": Fraction(1, 1)},
-    {"name": "dotted-quarter", "image": "dotted-quarter.png", "value": Fraction(3, 2)},
-    {"name": "Half", "image": "half_note.jpeg", "value": Fraction(2, 1)},
+    {"name": "dotted-quarter", "image": "dotted_quarter.png", "value": Fraction(3, 2)},
+    {"name": "Half", "image": "half_note.png", "value": Fraction(2, 1)},
     {"name": "dotted-half", "image": "dotted-half.png", "value": Fraction(3, 1)},
-    {"name": "Whole", "image": "whole_note.jpg", "value": Fraction(4, 1)},
+    {"name": "Whole", "image": "whole_note.png", "value": Fraction(4, 1)},
     {"name": "Triplet-eighth", "image": "triplet-eighth.png", "value": Fraction(1, 3)},
     {"name": "Triplet-quarter", "image": "triplet-quarter.png", "value": Fraction(2, 3)}
 ]
@@ -51,12 +51,7 @@ class RhythmGeneratorApp:
         self.time_signature_combobox = ttk.Combobox(frm, values=time_signature_options, state="readonly")
         self.time_signature_combobox.grid(column=1, row=0)
 
-        ttk.Label(frm, text="Ties over Measure").grid(column=2, row=0)
-        ties_options = ["Yes", "No"] 
-        self.tie_measures_combobox = ttk.Combobox(frm, values=ties_options, state="readonly")
-        self.tie_measures_combobox.grid(column=3, row=0)
-
-        ttk.Label(frm, text="Number of Bars(default is 32):").grid(column=4, row=0)
+        ttk.Label(frm, text=f"Number of Bars(default is {BARS_IN_PAGE}):").grid(column=4, row=0)
         num_bars_entry = ttk.Entry(frm, textvariable=self.num_bars_var)
         num_bars_entry.grid(column=5, row=0)
 
@@ -70,8 +65,6 @@ class RhythmGeneratorApp:
         images_directory = os.path.join(os.path.dirname(__file__), "images")
 
         for i, pattern in enumerate(rhythm_patterns):
-            if 'rest' in pattern['image']:
-                continue
             image_path = os.path.join(images_directory, pattern["image"])
             image = Image.open(image_path).resize((50, 50), resample=Image.HAMMING)
             photo = ImageTk.PhotoImage(image)
@@ -102,13 +95,8 @@ class RhythmGeneratorApp:
         # Toggle the pattern in the list of selected patterns
         if pattern["name"] in self.selected_patterns:
             del self.selected_patterns[pattern["name"]]
-            rest_name = f"rest-{pattern['name']}"
-            del self.selected_patterns[rest_name]
         else:
             self.selected_patterns[pattern["name"]] = pattern["value"]
-            rest_name = f"rest-{pattern['name']}"
-            self.selected_patterns[rest_name] = Fraction(1, 3) if pattern["name"] == "Triplet-eighth" else pattern["value"]
-
         # Update the selected triplets dictionary
         self.update_selected_triplets()
         self.update_selected_regular()
@@ -130,7 +118,6 @@ class RhythmGeneratorApp:
         max_tries = 25
 
         selected_time_signature = self.time_signature_combobox.get()
-        ties = self.tie_measures_combobox.get()
         if selected_time_signature:
             beats_per_measure, note_value = map(int, selected_time_signature.split('/'))
             bar_length = Fraction(beats_per_measure, 1) * Fraction(4, note_value)
@@ -261,6 +248,8 @@ class RhythmGeneratorApp:
 
         try:
             num_bars = int(num_bars_str)
+            if num_bars <= 0:
+                raise ValueError
             self.BARS_IN_PAGE = num_bars
         except ValueError:
             messagebox.showinfo("Invalid input", f"invalid input. using default value of {self.BARS_IN_PAGE}.")
