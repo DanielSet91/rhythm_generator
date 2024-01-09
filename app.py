@@ -9,8 +9,9 @@ from fractions import Fraction
 import tkinter
 
 rhythm_patterns = [
+    {"name": "sixteenth-Triplet", "image": "Sixteenth_Note_Triplet.png", "value": Fraction(1, 6)},
     {"name": "sixteenth", "image": "sixteenth_note.png", "value": Fraction(1, 4)},
-    {"name": "Eighth", "image": "eighth_note.jpg", "value": Fraction(1, 2)},
+    {"name": "Eighth", "image": "eighth_note.png", "value": Fraction(1, 2)},
     {"name": "dotted-Eighth", "image": "dotted_eighth_note.png", "value": Fraction(3, 4)},
     {"name": "Quarter", "image": "quarter_note.png", "value": Fraction(1, 1)},
     {"name": "dotted-quarter", "image": "dotted_quarter.png", "value": Fraction(3, 2)},
@@ -33,11 +34,13 @@ class RhythmGeneratorApp:
 
         self.selected_triplets = {}
         self.selected_regular = {}
+        self.selected_sixteenth_triplets = {}
 
         self.num_bars_var = StringVar(value=str(BARS_IN_PAGE))
         self.output_file_path = "generated_music.xml"
         self.output_file_type = "musicxml"
         self.BARS_IN_PAGE = BARS_IN_PAGE
+        self.time_signature = Fraction (4, 4)
         # Create GUI elements
         self.create_gui_elements()
 
@@ -50,6 +53,10 @@ class RhythmGeneratorApp:
         time_signature_options = ["4/4", "3/4", "6/8", "2/4", "5/4", "7/8", "9/8", "12/8"] 
         self.time_signature_combobox = ttk.Combobox(frm, values=time_signature_options, state="readonly")
         self.time_signature_combobox.grid(column=1, row=0)
+
+        ttk.Label(frm, text="Custom Time Signature:").grid(column=2, row=0)
+        self.custom_time_signature_entry = ttk.Entry(frm, textvariable=self.time_signature)
+        self.custom_time_signature_entry.grid(column=3, row=0)
 
         ttk.Label(frm, text=f"Number of Bars(default is {BARS_IN_PAGE}):").grid(column=4, row=0)
         num_bars_entry = ttk.Entry(frm, textvariable=self.num_bars_var)
@@ -100,12 +107,17 @@ class RhythmGeneratorApp:
         # Update the selected triplets dictionary
         self.update_selected_triplets()
         self.update_selected_regular()
+        self.update_selected_sixteenth_triplets()
 
     def update_selected_triplets(self):
         self.selected_triplets = {name: value for name, value in self.selected_patterns.items() if "Triplet" in name}
-    
+
     def update_selected_regular(self):
         self.selected_regular = {name: value for name, value in self.selected_patterns.items() if not "Triplet" in name}  
+
+    # Updates selected notes so it will contain sixteenth and eighth triplets
+    def update_selected_sixteenth_triplets(self):
+        self.selected_sixteenth_triplets = {name: value for name, value in self.selected_triplets.items() if "quarter" not in name}
 
     def generate_oneBar(self):
         
@@ -114,25 +126,32 @@ class RhythmGeneratorApp:
         eighth_triplet = Fraction(1, 3)
         quarter_triplet = Fraction(2, 3)
         quarter = Fraction(1, 1)
+        sixteenth_triplet = Fraction(1, 6)
         tries = 0
         max_tries = 25
-
         selected_time_signature = self.time_signature_combobox.get()
+        custom_time_signature = self.valid_custom_time_signature()
+
         if selected_time_signature:
             beats_per_measure, note_value = map(int, selected_time_signature.split('/'))
             bar_length = Fraction(beats_per_measure, 1) * Fraction(4, note_value)
-            fourth_beat = bar_length - Fraction(1, 1)
+
+
+        elif custom_time_signature:
+            beats, note_value = map(int, custom_time_signature.split('/'))
+            bar_length = Fraction(beats, 1) * Fraction(4, note_value)
 
         else:
             bar_length = Fraction(4, 1)
-            fourth_beat = bar_length - Fraction(1, 1)
-            
+
+        fourth_beat = bar_length - Fraction(1, 1)   
+
         while bar < bar_length and self.selected_patterns and (self.selected_regular or self.selected_triplets):
             selected_note_name = random.choice(list(self.selected_patterns))
             selected_note = self.selected_patterns[selected_note_name]
             if tries >= max_tries:
                 error_message = "Exceeded maximum number of tries. Unable to generate valid rhythm."
-                tkinter.messagebox.showerror("Error", error_message)
+                messagebox.showerror("Error", error_message)
                 raise ValueError(error_message)
             
             if selected_note + bar > bar_length:
@@ -158,9 +177,22 @@ class RhythmGeneratorApp:
                         bar += duration
                         selected_rhythm.append((note_name, duration))
 
+                elif selected_note == sixteenth_triplet:
+                    triplet_notes = self.generate_sixteen_triplets()
+                    for note_name, duration in triplet_notes:
+                        bar += duration
+                        selected_rhythm.append((note_name, duration))
+
                 elif self.selected_regular:
                     bar += selected_note                    
                     selected_rhythm.append((selected_note_name, selected_note))
+
+            elif bar% quarter == 0.5 and bar + selected_note <= bar_length and self.selected_sixteenth_triplets and selected_note == sixteenth_triplet:
+                if selected_note == sixteenth_triplet:
+                    triplet_notes = self.generate_sixteen_triplets()
+                    for note_name, duration in triplet_notes:
+                        bar += duration
+                        selected_rhythm.append((note_name, duration))
 
             elif bar + selected_note <= bar_length and self.selected_regular:
                 selected_note_name = random.choice(list(self.selected_regular))
@@ -171,8 +203,28 @@ class RhythmGeneratorApp:
                 bar += selected_note
                 selected_rhythm.append((selected_note_name, selected_note))
 
-        return selected_rhythm       
-    
+        return selected_rhythm
+
+
+    def generate_sixteen_triplets(self):
+        triplets_notes = []
+        eighth_note = Fraction(1, 2)
+        total = Fraction(0, 1) 
+
+
+        while total < eighth_note:
+            selected_note_name = random.choice(list(self.selected_sixteenth_triplets))
+            selected_note = self.selected_triplets[selected_note_name]
+
+            if total + selected_note > eighth_note:
+                continue
+
+            total += selected_note
+            triplets_notes.append((selected_note_name, selected_note))
+
+        return triplets_notes
+
+
     def generate_eighth_triplets(self):
         triplets_notes = []
         quarter = Fraction(1, 1)
@@ -218,23 +270,58 @@ class RhythmGeneratorApp:
             except StopIteration:
                 print("StopIteration in generate_rhythms")
 
+    def valid_custom_time_signature(self):
+        selected_time_signature = self.time_signature_combobox.get()
+        custom_time_signature = self.custom_time_signature_entry.get()
+        valid_quarter_note = [2, 4, 8, 16, 32]
+
+        if custom_time_signature:
+            try:
+                beats, quarter_note = custom_time_signature.split("/")
+                try:
+                    beats, quarter_note = map(int, (beats, quarter_note))
+                except ValueError:
+                    messagebox.showerror("Can accept only numbers", f"invalid: {beats}, {quarter_note}. Please put only regular numbers in the custom time signature")
+
+                if quarter_note not in valid_quarter_note:
+                    raise ValueError
+                elif beats <= 0 or beats > 60:
+                    raise ValueError
+                else:
+                    custom_time_signature = f"{beats}/{quarter_note}"
+
+            except ValueError:
+                messagebox.showerror("Invalid time signature formant", "Please check the time signature format. example: 4/4, 7/8")
+            except TypeError:
+                messagebox.showerror("Unexcepted error occured", "Please check the time signature format. example: 4/4, 7/8")
+
+        if selected_time_signature and custom_time_signature:
+            messagebox.showerror("Two time signatures", f"Cant make time signature of {selected_time_signature} and {custom_time_signature}")
+            raise ValueError
+        
+        return custom_time_signature
+    
 
     def create_music_stream(self, rhythms):
         music_stream = stream.Stream()
         selected_time_signature = self.time_signature_combobox.get()
+        custom_time_signature = self.valid_custom_time_signature()
+        
+
         if selected_time_signature:
             music_stream.append(meter.TimeSignature(self.time_signature_combobox.get()))
+        elif custom_time_signature:
+            music_stream.append(meter.TimeSignature(custom_time_signature))
         else:
             music_stream.append(meter.TimeSignature('4/4'))
 
         for rhythm in rhythms:
             measure = stream.Measure()
 
-            for index, (note_name, duration) in enumerate(rhythm, start=1):
+            for note_name, duration in rhythm:
                 choices = [note.Note('C4'), note.Rest()]
                 probability = [0.8, 0.2]
                 n = random.choices(choices, weights=probability)[0]
-                # print(f"Iteration {index}: {duration}")
                 n.quarterLength = duration
                 measure.append(n)
 
