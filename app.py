@@ -7,6 +7,8 @@ import random
 import threading
 from fractions import Fraction
 import tkinter
+import subprocess
+import configparser
 
 rhythm_patterns = [
     {"name": "sixteenth-Triplet", "image": "Sixteenth_Note_Triplet.png", "value": Fraction(1, 6)},
@@ -41,6 +43,13 @@ class RhythmGeneratorApp:
         self.output_file_type = "musicxml"
         self.BARS_IN_PAGE = BARS_IN_PAGE
         self.time_signature = Fraction (4, 4)
+
+        self.selected_program = StringVar(value="musescore")
+        self.config_file_path = os.path.join(os.path.dirname(__file__), "config.ini")
+        self.output_file_path = self.load_output_file_path()
+        self.musescore_path = self.load_program_path("musescore_path")
+        self.sibelius_path = self.load_program_path("sibelius_path")
+
         # Create GUI elements
         self.create_gui_elements()
 
@@ -63,10 +72,21 @@ class RhythmGeneratorApp:
         num_bars_entry.grid(column=5, row=0)
 
         generate_button = ttk.Button(frm, text="Generate Rhythm", command=self.on_generate_button)
-        generate_button.grid(column=1, row=7, columnspan=3)
+        generate_button.grid(column=1, row=8, columnspan=3)
 
-        close_button = Button(frm, text="Close", command=self.on_close_button)
-        close_button.grid(column=4, row=7, columnspan=3)
+        ttk.Label(frm, text="Choose MuseScore Executable:").grid(column=0, row=6)
+        choose_musescore_button = ttk.Button(frm, text="Browse", command=self.on_choose_musescore_button)
+        choose_musescore_button.grid(column=1, row=6, columnspan=1)
+
+        ttk.Label(frm, text="Choose Sibelius Executable:").grid(column=0, row=7)
+        choose_sibelius_button = ttk.Button(frm, text="Browse", command=self.on_choose_sibelius_button)
+        choose_sibelius_button.grid(column=1, row=7, columnspan=1)
+
+        ttk.Label(frm, text="Select Program:").grid(column=0, row=4)
+        musescore_radio = Radiobutton(frm, text="MuseScore", variable=self.selected_program, value="musescore")
+        musescore_radio.grid(column=1, row=4, padx=5, pady=5)
+        sibelius_radio = Radiobutton(frm, text="Sibelius", variable=self.selected_program, value="sibelius")
+        sibelius_radio.grid(column=2, row=4, padx=5, pady=5)
 
         # Create buttons for each rhythm pattern
         images_directory = os.path.join(os.path.dirname(__file__), "images")
@@ -87,9 +107,30 @@ class RhythmGeneratorApp:
         choose_file_button = ttk.Button(frm, text="Choose Output File", command=self.on_choose_file_button)
         choose_file_button.grid(column=1, row=3, columnspan=3)
 
-        ttk.Label(frm, text="Created by Daniel Set").grid(column=4, row=6, columnspan=6, pady=10)
+        ttk.Label(frm, text="Created by Daniel Set").grid(column=5, row=7, columnspan=6, pady=12)
+        close_button = Button(frm, text="Close", command=self.on_close_button)
+        close_button.grid(column=5, row=8, columnspan=3)
 
+    def load_program_path(self, program):
+        config = configparser.ConfigParser()
+        if os.path.exists(self.config_file_path):
+            config.read(self.config_file_path)
 
+        if "Paths" in config and program in config["Paths"]:
+            return config["Paths"][program]
+        else:
+            return ""
+        
+    def load_output_file_path(self):
+        config = configparser.ConfigParser()
+        if os.path.exists(self.config_file_path):
+            config.read(self.config_file_path)
+
+        if "Paths" in config and "output_file_path" in config["Paths"]:
+            return config["Paths"]["output_file_path"]
+        else:
+            return "generated_music.xml"
+        
     def toggle_pattern(self, pattern, button):
         is_pressed = button.instate(['pressed'])
 
@@ -128,7 +169,7 @@ class RhythmGeneratorApp:
         quarter = Fraction(1, 1)
         sixteenth_triplet = Fraction(1, 6)
         tries = 0
-        max_tries = 25
+        max_tries = 35
         selected_time_signature = self.time_signature_combobox.get()
         custom_time_signature = self.valid_custom_time_signature()
 
@@ -344,6 +385,34 @@ class RhythmGeneratorApp:
     
         threading.Thread(target=self.generate_and_show_music).start()
 
+    def on_choose_musescore_button(self):
+        musescore_path = filedialog.askopenfilename(title="Select MuseScore Executable", filetypes=[("Executable files", "*.exe")])
+        if musescore_path:
+            self.musescore_path = musescore_path
+            self.save_program_path("musescore_path", musescore_path)
+
+    def on_choose_sibelius_button(self):
+        sibelius_path = filedialog.askopenfilename(title="Select Sibelius Executable", filetypes=[("Executable files", "*.exe")])
+        if sibelius_path:
+            self.sibelius_path = sibelius_path
+            self.save_program_path("sibelius_path", sibelius_path)
+
+    def save_program_path(self, program, path):
+        config = configparser.ConfigParser()
+
+        if os.path.exists(self.config_file_path):
+            config.read(self.config_file_path)
+
+        if "Paths" not in config:
+            config["Paths"] = {}
+
+        config["Paths"][program] = path
+        config["Paths"]["output_file_path"] = self.output_file_path
+
+
+        with open(self.config_file_path, "w") as config_file:
+            config.write(config_file)
+
     def on_choose_file_button(self):
         file_path = filedialog.asksaveasfilename(defaultextension=".xml", filetypes=[("MusicXML files", "*.xml"), ("MIDI files", "*.midi;*.mid"), ("Sibelius/MuseScore files", "*.sib;*.mscz")])
         if file_path:
@@ -352,10 +421,22 @@ class RhythmGeneratorApp:
             self.output_file_type = file_extension.lstrip(".") if file_extension else "musicxml"
 
     def generate_and_show_music(self):
+        selected_program = self.selected_program.get()
+
         try:
             rhythms = list(self.generate_rhythms())
             music_stream = self.create_music_stream(rhythms)
-            music_stream.show()
+
+            if selected_program == "musescore":
+                print(f"Using MuseScore path: {self.musescore_path}")
+                music_stream.show("musicxml", options=[self.musescore_path])
+
+            elif selected_program == "sibelius":
+                print(f"Using Sibelius path: {self.sibelius_path}")
+                subprocess.run([self.sibelius_path, self.output_file_path])
+
+            else:
+                music_stream.show()
             try:
                 music_stream.write(self.output_file_type, fp=self.output_file_path)
                 print(f"Generation complete. Music saved to: {self.output_file_path}")
@@ -363,6 +444,7 @@ class RhythmGeneratorApp:
             except Exception as e:
                 print(f"Error while saving the file: {e}")
 
+            messagebox.showinfo("Generation complete", f"generation completed and saved to: {self.output_file_path}")
             print("Generation complete")
 
         except StopIteration:
