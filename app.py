@@ -9,6 +9,7 @@ from fractions import Fraction
 import tkinter
 import subprocess
 import configparser
+import logging
 
 rhythm_patterns = [
     {"name": "sixteenth-Triplet", "image": "Sixteenth_Note_Triplet.png", "value": Fraction(1, 6)},
@@ -44,11 +45,16 @@ class RhythmGeneratorApp:
         self.BARS_IN_PAGE = BARS_IN_PAGE
         self.time_signature = Fraction (4, 4)
 
+        # Initialize variables for program selection
         self.selected_program = StringVar(value="musescore")
         self.config_file_path = os.path.join(os.path.dirname(__file__), "config.ini")
         self.output_file_path = self.load_output_file_path()
         self.musescore_path = self.load_program_path("musescore_path")
         self.sibelius_path = self.load_program_path("sibelius_path")
+        self.finale_path = self.load_program_path("finale_path")
+
+        # Configure logging
+        logging.basicConfig(filename='rhythm_generator.log', level=logging.DEBUG)
 
         # Create GUI elements
         self.create_gui_elements()
@@ -81,12 +87,18 @@ class RhythmGeneratorApp:
         ttk.Label(frm, text="Choose Sibelius Executable:").grid(column=0, row=7)
         choose_sibelius_button = ttk.Button(frm, text="Browse", command=self.on_choose_sibelius_button)
         choose_sibelius_button.grid(column=1, row=7, columnspan=1)
+        
+        ttk.Label(frm, text="Choose Finale Executable:").grid(column=0, row=8)
+        choose_finale_button = ttk.Button(frm, text="Browse", command=self.on_choose_finale_button)
+        choose_finale_button.grid(column=1, row=8, columnspan=1)
 
         ttk.Label(frm, text="Select Program:").grid(column=0, row=4)
         musescore_radio = Radiobutton(frm, text="MuseScore", variable=self.selected_program, value="musescore")
         musescore_radio.grid(column=1, row=4, padx=5, pady=5)
         sibelius_radio = Radiobutton(frm, text="Sibelius", variable=self.selected_program, value="sibelius")
         sibelius_radio.grid(column=2, row=4, padx=5, pady=5)
+        sibelius_radio = Radiobutton(frm, text="Finale", variable=self.selected_program, value="finale")
+        sibelius_radio.grid(column=3, row=4, padx=5, pady=5)
 
         # Create buttons for each rhythm pattern
         images_directory = os.path.join(os.path.dirname(__file__), "images")
@@ -173,6 +185,8 @@ class RhythmGeneratorApp:
         selected_time_signature = self.time_signature_combobox.get()
         custom_time_signature = self.valid_custom_time_signature()
 
+        logging.debug("Starting rhythm generation")
+
         if selected_time_signature:
             beats_per_measure, note_value = map(int, selected_time_signature.split('/'))
             bar_length = Fraction(beats_per_measure, 1) * Fraction(4, note_value)
@@ -190,6 +204,7 @@ class RhythmGeneratorApp:
         while bar < bar_length and self.selected_patterns and (self.selected_regular or self.selected_triplets):
             selected_note_name = random.choice(list(self.selected_patterns))
             selected_note = self.selected_patterns[selected_note_name]
+
             if tries >= max_tries:
                 error_message = "Exceeded maximum number of tries. Unable to generate valid rhythm."
                 messagebox.showerror("Error", error_message)
@@ -243,6 +258,8 @@ class RhythmGeneratorApp:
                     selected_note = self.selected_regular[selected_note_name]
                 bar += selected_note
                 selected_rhythm.append((selected_note_name, selected_note))
+
+        logging.debug(f"Bar: {bar}, Selected Patterns: {self.selected_patterns}")
 
         return selected_rhythm
 
@@ -397,6 +414,12 @@ class RhythmGeneratorApp:
             self.sibelius_path = sibelius_path
             self.save_program_path("sibelius_path", sibelius_path)
 
+    def on_choose_finale_button(self):
+        finale_path = filedialog.askopenfilename(title="Select Finale Executable", filetypes=[("Executable files", "*.exe")])
+        if finale_path:
+            self.finale_path = finale_path
+            self.save_program_path("finale_path", finale_path)
+
     def save_program_path(self, program, path):
         config = configparser.ConfigParser()
 
@@ -439,16 +462,22 @@ class RhythmGeneratorApp:
                 music_stream.show()
             try:
                 music_stream.write(self.output_file_type, fp=self.output_file_path)
+                logging.debug(f"Music saved to: {self.output_file_path}")
+                messagebox.showinfo("Generation Complete!", f"Music save to: {self.output_file_path}")
                 print(f"Generation complete. Music saved to: {self.output_file_path}")
 
             except Exception as e:
                 print(f"Error while saving the file: {e}")
 
             messagebox.showinfo("Generation complete", f"generation completed and saved to: {self.output_file_path}")
+            logging.debug("Rhythm generation complete")
             print("Generation complete")
 
         except StopIteration:
             print("Generation complete")
+        except Exception as e:
+            print(f"Error during rhythm generation: {e}")
+            messagebox.showerror("Error", f"Error during rhythm generation: {e}")
 
     def on_close_button(self):
         self.root.destroy()
