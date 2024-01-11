@@ -458,6 +458,10 @@ class RhythmGeneratorApp:
                 print(f"Using Sibelius path: {self.sibelius_path}")
                 subprocess.run([self.sibelius_path, self.output_file_path])
 
+            elif selected_program == "finale":
+                print(f"using finale path: {self.finale_path}")
+                subprocess.run([self.finale_path, self.output_file_path])
+
             else:
                 music_stream.show()
             try:
