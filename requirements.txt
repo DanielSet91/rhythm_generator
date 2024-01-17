@@ -7,3 +7,6 @@ os
 random
 threading
 Fraction
+subprocess
+configparser
+logging
