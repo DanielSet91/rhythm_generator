@@ -1,4 +1,5 @@
 from rhythm_generator import *
+from tkinter import Tk
 
 def main():
     root = Tk()

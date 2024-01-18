@@ -1,5 +1,4 @@
-from tkinter import *
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, Button, StringVar, Radiobutton
 from PIL import Image, ImageTk
 from music21 import stream, meter, note
 import os
@@ -169,7 +168,7 @@ class RhythmGeneratorApp:
 
     # Updates selected notes so it will contain sixteenth and eighth triplets
     def update_selected_sixteenth_triplets(self):
-        self.selected_sixteenth_triplets = {name: value for name, value in self.selected_triplets.items() if "quarter" not in name}
+        self.selected_sixteenth_triplets = {name: value for name, value in self.selected_triplets.items() if "sixteenth" in name}
 
     def generate_oneBar(self):
         
@@ -215,50 +214,51 @@ class RhythmGeneratorApp:
                 tries += 1
                 continue
 
-            elif bar % quarter == 0 and bar + selected_note <= bar_length and selected_note:
-                if selected_note == eighth_triplet:
-                    triplet_notes = self.generate_eighth_triplets()
-                    for note_name, duration in triplet_notes:
-                        bar += duration
-                        selected_rhythm.append((note_name, duration))
+            elif selected_note in self.selected_triplets.values():
+                if bar % quarter == 0:
+                    if bar <= last_two_beats:
+                        if selected_note == quarter_triplet:
+                            triplet_notes = self.generate_quarter_triplets()
+                            for note_name, duration in triplet_notes:
+                                bar += duration
+                                selected_rhythm.append((note_name, duration))
+                        elif selected_note == eighth_triplet:
+                            triplet_notes = self.generate_eighth_triplets()
+                            for note_name, duration in triplet_notes:
+                                bar += duration
+                                selected_rhythm.append((note_name, duration))
+                        else:
+                            triplet_notes = self.generate_sixteen_triplets()
+                            for note_name, duration in triplet_notes:
+                                bar += duration
+                                selected_rhythm.append((note_name, duration))                                                        
 
-                elif selected_note == quarter_triplet and bar == last_beat:
-                    triplet_notes = self.generate_eighth_triplets()
-                    for note_name, duration in triplet_notes:
-                        bar += duration
-                        selected_rhythm.append((note_name, duration))   
+                    elif bar <= last_beat:
+                        triplet_notes = self.generate_eighth_triplets()
+                        for note_name, duration in triplet_notes:
+                            bar += duration
+                            selected_rhythm.append((note_name, duration))
+                    elif bar <= last_eighth:
+                        triplet_notes = self.generate_sixteen_triplets()
+                        for note_name, duration in triplet_notes:
+                            bar += duration
+                            selected_rhythm.append((note_name, duration))
+                    else:
+                        tries = tries -1
+                        continue
 
-                elif selected_note == quarter_triplet:
-                    triplet_notes = self.generate_quarter_triplets()
-                    for note_name, duration in triplet_notes:
-                        bar += duration
-                        selected_rhythm.append((note_name, duration))
-
-                elif selected_note == sixteenth_triplet:
+                elif bar % quarter == 0.5 and bar <= last_eighth:
                     triplet_notes = self.generate_sixteen_triplets()
                     for note_name, duration in triplet_notes:
                         bar += duration
                         selected_rhythm.append((note_name, duration))
+                else:
+                    tries = tries -1
+                    continue
 
-                elif self.selected_regular:
-                    bar += selected_note                    
-                    selected_rhythm.append((selected_note_name, selected_note))
-
-            elif bar% quarter == 0.5 and bar + selected_note <= bar_length and self.selected_sixteenth_triplets and selected_note == sixteenth_triplet:
-                if selected_note == sixteenth_triplet:
-                    triplet_notes = self.generate_sixteen_triplets()
-                    for note_name, duration in triplet_notes:
-                        bar += duration
-                        selected_rhythm.append((note_name, duration))
-
-            elif bar + selected_note <= bar_length and self.selected_regular:
-                selected_note_name = random.choice(list(self.selected_regular))
-                selected_note = self.selected_regular[selected_note_name]
-                while selected_note + bar > bar_length:
-                    selected_note_name = random.choice(list(self.selected_regular))
-                    selected_note = self.selected_regular[selected_note_name]
+            elif selected_note in self.selected_regular.values():                        
                 bar += selected_note
-                selected_rhythm.append((selected_note_name, selected_note))
+                selected_rhythm.append((selected_note_name, selected_note))              
 
         logging.debug(f"Bar: {bar}, Selected Patterns: {self.selected_patterns}")
 
@@ -271,7 +271,7 @@ class RhythmGeneratorApp:
         total = Fraction(0, 1) 
 
 
-        while total < eighth_note:
+        while total != eighth_note:
             selected_note_name = random.choice(list(self.selected_sixteenth_triplets))
             selected_note = self.selected_triplets[selected_note_name]
 
@@ -289,7 +289,7 @@ class RhythmGeneratorApp:
         quarter = Fraction(1, 1)
         total = Fraction(0, 1)
 
-        while total < quarter:
+        while total != quarter:
             selected_note_name = random.choice(list(self.selected_triplets))
             selected_note = self.selected_triplets[selected_note_name]
 
@@ -306,16 +306,16 @@ class RhythmGeneratorApp:
         half = Fraction(2, 1)
         total = Fraction(0, 1)
 
-        while total < half:
+        while total != half:
             selected_note_name = random.choice(list(self.selected_triplets))
             selected_note = self.selected_triplets[selected_note_name]
             if total + selected_note > half:
                 continue
 
-            if total == Fraction(5, 3):
-                while selected_note != Fraction(1, 3):
-                    selected_note_name = random.choice(list(self.selected_triplets))
-                    selected_note = self.selected_triplets[selected_note_name]
+            # if total == Fraction(5, 3):
+            #     while selected_note != Fraction(1, 3):
+            #         selected_note_name = random.choice(list(self.selected_triplets))
+            #         selected_note = self.selected_triplets[selected_note_name]
             total += selected_note
             triplet_notes.append((selected_note_name, selected_note))
 
