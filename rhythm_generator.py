@@ -177,7 +177,6 @@ class RhythmGeneratorApp:
         eighth_triplet = Fraction(1, 3)
         quarter_triplet = Fraction(2, 3)
         quarter = Fraction(1, 1)
-        sixteenth_triplet = Fraction(1, 6)
         tries = 0
         max_tries = 35
         selected_time_signature = self.time_signature_combobox.get()
@@ -311,11 +310,7 @@ class RhythmGeneratorApp:
             selected_note = self.selected_triplets[selected_note_name]
             if total + selected_note > half:
                 continue
-
-            # if total == Fraction(5, 3):
-            #     while selected_note != Fraction(1, 3):
-            #         selected_note_name = random.choice(list(self.selected_triplets))
-            #         selected_note = self.selected_triplets[selected_note_name]
+            
             total += selected_note
             triplet_notes.append((selected_note_name, selected_note))
 

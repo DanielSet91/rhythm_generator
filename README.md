@@ -1,5 +1,5 @@
     # Rhythm Generator App
-    #### Video Demo:  <URL HERE>
+    #### Video Demo:  https://www.youtube.com/watch?v=ht1-7mKoQs0
     #### Description: Rhythmic generator app for musicians practice.
     
     Musicians rhythm is everything.
