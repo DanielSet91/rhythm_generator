@@ -345,7 +345,7 @@ class RhythmGeneratorApp:
                     custom_time_signature = f"{beats}/{quarter_note}"
 
             except ValueError:
-                messagebox.showerror("Invalid time signature formant", "Please check the time signature format. example: 4/4, 7/8")
+                messagebox.showerror("Invalid time signature format", "Please check the time signature format. example: 4/4, 7/8")
             except TypeError:
                 messagebox.showerror("Unexcepted error occured", "Please check the time signature format. example: 4/4, 7/8")
 

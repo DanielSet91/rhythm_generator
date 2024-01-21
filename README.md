@@ -2,7 +2,8 @@
     #### Video Demo:  https://www.youtube.com/watch?v=ht1-7mKoQs0
     #### Description: Rhythmic generator app for musicians practice.
     
-    Musicians rhythm is everything.
+
+    ### For musicians rhythm is everything.
     So when we come to practice on rhythmic exercises its important it will be always something new and offer a challenging exprience.
     I wanted to build an app that will replace the old books and generate for you, upon your choices, a new exercise.
 
@@ -12,7 +13,7 @@
     the gui function handles all the interface - buttons, configurations and the fields.
     the toggle pattern function should handle the add or remove from the list of all the user rhythmic notes.
 
-    The most important function in the app is the generate_oneBar.
+    ### The most important function in the app is the generate_oneBar.
     This function is handling the given length of the bar(time signature),
     and ensures the production of a random bar.
     The function handles most of the exceptional states to make sure the bar won't get funky such as:
@@ -20,7 +21,8 @@
     producing triplets in rhythmic places that will exceed the time signature of the bar.
     making sure the chosen rhythmic notes list isnt empty.
 
-    In order to keep track on bugs, configuration problems I've added the logging and configuration options.
+    ### After sending the app for friend to check, I was needed to add some files to track down bugs.
+    In order to keep track on bugs and configuration problems I've added the logging and configuration options.
     the logging makes sure that to make a file rhythm_generator.log that will capture all the loggings in order to send them back to me.
     The configuration options were meant for those who have other programs than the one I was working with, such as Finale and Sibelius.
     making sure after the first configuration a file called config.ini will be created and store the configurations.
